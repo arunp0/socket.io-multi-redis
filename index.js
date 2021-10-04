@@ -8,7 +8,6 @@ var redis = require('redis').createClient;
 var msgpack = require('notepack.io');
 var Adapter = require('socket.io-adapter');
 var debug = require('debug')('socket.io-redis');
-var MersenneTwister = require('mersennetwister');
 var crypto = require("crypto")
 
 /**
@@ -86,11 +85,10 @@ function adapter(uri, opts) {
   if (!pubs) pubs = [createClient()];
   if (!subs) subs = [createClient()];
 
+  var pubCount = 0
+
   // this server's key
   var uid = uid2(6);
-
-  var randNumberSeed = parseInt(crypto.randomBytes(4).toString('hex'), 16);
-  var mt = new MersenneTwister(randNumberSeed);
 
   function subClientFunction (clients) {
     var custom = {}
@@ -110,7 +108,8 @@ function adapter(uri, opts) {
     var customFunctions = ['publish']
     customFunctions.map(fn => {
       custom[fn] = function (...args) {
-        var randomNumber = Math.floor(mt.rndHiRes() * clients.length);
+        var randomNumber = pubCount % clients.length;
+        pubCount = pubCount > 10000000 ? 0 : (pubCount + 1)
         return pubs[randomNumber][fn](...args)
       };
     })
@@ -179,10 +178,11 @@ function adapter(uri, opts) {
       pub.on('error', onError);
     });
 
-    this.mt = mt;
+    this.pubCount = 0
 
     this.getPub = function () {
-      var randomNumber = Math.floor(this.mt.rndHiRes() * pubs.length);
+      var randomNumber = this.pubCount % pubs.length;
+      this.pubCount = this.pubCount > 10000000 ? 0 : (this.pubCount + 1)
       debug(`publishing to pub ${randomNumber}`)
       return pubs[randomNumber]
     }

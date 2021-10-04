@@ -14,18 +14,17 @@
     "test": "mocha"
   },
   "dependencies": {
-    "mersennetwister": "^0.2.3",
-    "notepack.io": "~2.3.0",
-    "debug": "~4.3.0",
-    "redis": "^3.0.0",
-    "socket.io-adapter": "~1.1.0",
+    "notepack.io": "2.3.0",
+    "debug": "4.3.0",
+    "redis": "3.0.0",
+    "socket.io-adapter": "1.1.0",
     "uid2": "0.0.3"
   },
   "devDependencies": {
     "expect.js": "0.3.1",
-    "ioredis": "^4.0.0",
-    "mocha": "^3.4.2",
-    "socket.io": "latest",
-    "socket.io-client": "latest"
+    "ioredis": "4.0.0",
+    "mocha": "3.4.2",
+    "socket.io": "2.3.0",
+    "socket.io-client": "2.3.0"
   }
 }
