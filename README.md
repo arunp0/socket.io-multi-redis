@@ -1,4 +1,6 @@
-# Socket.IO Redis adapter
+# socket.io-multi-redis
+
+[![NPM version](https://badge.fury.io/js/socket.io-multi-redis.svg)](http://badge.fury.io/js/socket.io-multi-redis)
 
 The `socket.io-multi-redis` package allows broadcasting packets between multiple Socket.IO servers.
 
