@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:socketio/socket.io-redis-adapter.git"
+    "url": "git@github.com:arunp0/socket.io-multi-redis.git"
   },
   "files": [
     "dist/"
