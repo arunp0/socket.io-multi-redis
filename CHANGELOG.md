@@ -69,7 +69,7 @@ A dedicated adapter can be created with the `createShardedAdapter()` method:
 ```js
 import { Server } from 'socket.io';
 import { createClient } from 'redis';
-import { createShardedAdapter } from '@socket.io/redis-adapter';
+import { createShardedAdapter } from 'socket.io-multi-redis';
 
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
@@ -254,7 +254,7 @@ Thanks to this change, it will now work with multiple Socket.IO servers.
 
 * implement the serverSideEmit functionality ([3a0f29f](https://github.com/socketio/socket.io-redis-adapter/commit/3a0f29fbe322f280f48f92b3aac0fcc94d698ee8))
 * remove direct redis dependency ([c68a47c](https://github.com/socketio/socket.io-redis-adapter/commit/c68a47c4948554125dac0e317e19947a4d3d3251))
-* rename the package to `@socket.io/redis-adapter` ([3cac178](https://github.com/socketio/socket.io-redis-adapter/commit/3cac1789c558a3ece5bb222d73f097952b55c340))
+* rename the package to `socket.io-multi-redis` ([3cac178](https://github.com/socketio/socket.io-redis-adapter/commit/3cac1789c558a3ece5bb222d73f097952b55c340))
 
 
 ### BREAKING CHANGES
