@@ -108,21 +108,25 @@ export class RedisAdapter extends Adapter {
   private ackRequests: Map<string, AckRequest> = new Map();
   private redisListeners: Map<string, Function> = new Map();
   private readonly friendlyErrorHandler: () => void;
+  private pubCount: number;
+
+  public subClient: any;
+  public pubClient: any;
 
   /**
    * Adapter constructor.
    *
    * @param nsp - the namespace
-   * @param pubClient - a Redis client that will be used to publish messages
-   * @param subClient - a Redis client that will be used to receive messages (put in subscribed state)
+   * @param pubClients - a Redis clients that will be used to publish messages
+   * @param subClients - a Redis clients that will be used to receive messages (put in subscribed state)
    * @param opts - additional options
    *
    * @public
    */
   constructor(
     nsp: any,
-    readonly pubClient: any,
-    readonly subClient: any,
+    readonly pubClients: any[],
+    readonly subClients: any[],
     opts: Partial<RedisAdapterOptions> = {}
   ) {
     super(nsp);
@@ -140,7 +144,17 @@ export class RedisAdapter extends Adapter {
     this.responseChannel = prefix + "-response#" + this.nsp.name + "#";
     this.specificResponseChannel = this.responseChannel + this.uid + "#";
 
-    const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
+    if (!Array.isArray(this.pubClients)) {
+      this.pubClients = [this.pubClients];
+    }
+    if (!Array.isArray(this.subClients)) {
+      this.subClients = [this.subClients];
+    }
+
+    this.subClient = this.getSubClient();
+    this.pubClient = this.getPubClient();
+
+    const isRedisV4 = typeof this.subClients[0].pSubscribe === "function";
     if (isRedisV4) {
       this.redisListeners.set("psub", (msg, channel) => {
         this.onmessage(null, channel, msg);
@@ -185,6 +199,8 @@ export class RedisAdapter extends Adapter {
       );
     }
 
+    this.pubCount = 0;
+
     this.friendlyErrorHandler = function () {
       if (this.listenerCount("error") === 1) {
         console.warn("missing 'error' handler on this Redis client");
@@ -192,6 +208,80 @@ export class RedisAdapter extends Adapter {
     };
     this.pubClient.on("error", this.friendlyErrorHandler);
     this.subClient.on("error", this.friendlyErrorHandler);
+  }
+
+  getPubClient() {
+    const self = this;
+    const custom = {};
+    const customFunctions = ["publish"];
+    customFunctions.map((fn) => {
+      custom[fn] = function (...args: any) {
+        const randomNumber = self.pubCount % self.pubClients.length;
+        self.pubCount = self.pubCount > 10000000 ? 0 : self.pubCount + 1;
+        return self.pubClients[randomNumber][fn](...args);
+      };
+    });
+    const functions = [
+      "on",
+      "off",
+      "sendCommand",
+      "call",
+      "send_command",
+      "disconnect",
+      "quit",
+    ];
+    functions.map((fn) => {
+      custom[fn] = function (...args: any) {
+        self.pubClients.forEach((pubClient: any) => {
+          pubClient[fn](...args);
+        });
+      };
+    });
+    return custom;
+  }
+
+  getRandomPubClient = function () {
+    const randomNumber = this.pubCount % this.pubClients.length;
+    this.pubCount = this.pubCount > 10000000 ? 0 : this.pubCount + 1;
+    debug(`publishing to pub ${randomNumber}`);
+    return this.pubClients[randomNumber];
+  };
+
+  getSubClient() {
+    const self = this;
+    const custom = {};
+    const functions = [
+      "on",
+      "off",
+      "subscribe",
+      "psubscribe",
+      "pSubscribe",
+      "unsubscribe",
+      "punsubscribe",
+      "pUnsubscribe",
+      "sendCommand",
+      "call",
+      "send_command",
+      "disconnect",
+      "quit",
+    ];
+    functions.map((fn) => {
+      custom[fn] = function (...args: any) {
+        self.subClients.forEach((subClient: any) => {
+          subClient[fn](...args);
+        });
+      };
+    });
+    const promiseFunctions = ["PSUBSCRIBE"];
+    promiseFunctions.map((fn) => {
+      custom[fn] = function (...args: any) {
+        self.subClients.forEach((subClient: any) => {
+          subClient[fn](...args);
+        });
+        return Promise.resolve();
+      };
+    });
+    return custom;
   }
 
   /**
@@ -891,11 +981,11 @@ export class RedisAdapter extends Adapter {
   }
 
   override serverCount(): Promise<number> {
-    return PUBSUB(this.pubClient, "NUMSUB", this.requestChannel);
+    return PUBSUB(this.getRandomPubClient(), "NUMSUB", this.requestChannel);
   }
 
   close(): Promise<void> | void {
-    const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
+    const isRedisV4 = typeof this.pubClients[0].pSubscribe === "function";
     if (isRedisV4) {
       this.subClient.pUnsubscribe(
         this.channel + "*",

@@ -1,11 +1,23 @@
 # Socket.IO Redis adapter
 
-The `@socket.io/redis-adapter` package allows broadcasting packets between multiple Socket.IO servers.
+The `socket.io-multi-redis` package allows broadcasting packets between multiple Socket.IO servers.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="./assets/adapter_dark.png">
   <img alt="Diagram of Socket.IO packets forwarded through Redis" src="./assets/adapter.png">
 </picture>
+
+
+socket.io-multi-redis Uses Custom Scaling Solution.
+
+<picture>
+  <img alt="Diagram of Socket.IO packets forwarded through Multiple Redis Instances" src="./assets/architecture.png">
+</picture>
+
+
+By running socket.io with the `socket.io-multi-redis` adapter you can run
+multiple socket.io instances in different processes or servers that can
+all broadcast and emit events to and from each other with any number of redis server connections.
 
 **Table of contents**
 
@@ -35,19 +47,15 @@ The `@socket.io/redis-adapter` package allows broadcasting packets between multi
 ## Installation
 
 ```
-npm install @socket.io/redis-adapter
+npm install socket.io-multi-redis
 ```
 
 ## Compatibility table
 
 | Redis Adapter version | Socket.IO server version |
 |-----------------------|--------------------------|
-| 4.x                   | 1.x                      |
-| 5.x                   | 2.x                      |
-| 6.0.x                 | 3.x                      |
-| 6.1.x                 | 4.x                      |
-| 7.x and above         | 4.3.1 and above          |
-
+| 2.x                   | 2.x                      |
+| 3.x                   | 4.3.x and above                     |
 ## Usage
 
 ### With the `redis` package
@@ -55,18 +63,28 @@ npm install @socket.io/redis-adapter
 ```js
 import { createClient } from "redis";
 import { Server } from "socket.io";
-import { createAdapter } from "@socket.io/redis-adapter";
+import { createAdapter } from "socket.io-multi-redis";
 
-const pubClient = createClient({ url: "redis://localhost:6379" });
-const subClient = pubClient.duplicate();
+const pubClient1 = createClient({ url: "redis://localhost:6379" });
+const subClient1 = pubClient.duplicate();
+
+const pubClient2 = createClient({ url: "redis://localhost:6380" });
+const subClient2 = pubClient.duplicate();
+
+const pubClient3 = createClient({ url: "redis://localhost:6381" });
+const subClient3 = pubClient.duplicate();
 
 await Promise.all([
-  pubClient.connect(),
-  subClient.connect()
+  pubClient1.connect(),subClient1.connect(),
+  pubClient2.connect(),subClient2.connect(),
+  pubClient3.connect(),subClient3.connect()
 ]);
 
 const io = new Server({
-  adapter: createAdapter(pubClient, subClient)
+  adapter: createAdapter(
+    [pubClient1, pubClient2, pubClient3],
+    [subClient1, subClient2, subClient3],
+  )
 });
 
 io.listen(3000);
@@ -77,7 +95,7 @@ io.listen(3000);
 ```js
 import { createCluster } from "redis";
 import { Server } from "socket.io";
-import { createAdapter } from "@socket.io/redis-adapter";
+import { createAdapter } from "socket.io-multi-redis";
 
 const pubClient = createCluster({
   rootNodes: [
@@ -111,13 +129,22 @@ io.listen(3000);
 ```js
 import { Redis } from "ioredis";
 import { Server } from "socket.io";
-import { createAdapter } from "@socket.io/redis-adapter";
+import { createAdapter } from "socket.io-multi-redis";
 
-const pubClient = new Redis();
-const subClient = pubClient.duplicate();
+const pubClient1 = new Redis();
+const subClient1 = pubClient.duplicate();
+
+const pubClient2 = new Redis();
+const subClient2 = pubClient.duplicate();
+
+const pubClient3 = new Redis();
+const subClient3 = pubClient.duplicate();
 
 const io = new Server({
-  adapter: createAdapter(pubClient, subClient)
+  adapter: createAdapter(
+    [pubClient1, pubClient2, pubClient3],
+    [subClient1, subClient2, subClient3],
+  )
 });
 
 io.listen(3000);
@@ -128,7 +155,7 @@ io.listen(3000);
 ```js
 import { Cluster } from "ioredis";
 import { Server } from "socket.io";
-import { createAdapter } from "@socket.io/redis-adapter";
+import { createAdapter } from "socket.io-multi-redis";
 
 const pubClient = new Cluster([
   {
@@ -164,7 +191,7 @@ A dedicated adapter can be created with the `createShardedAdapter()` method:
 ```js
 import { Server } from "socket.io";
 import { createClient } from "redis";
-import { createShardedAdapter } from "@socket.io/redis-adapter";
+import { createShardedAdapter } from "socket.io-multi-redis";
 
 const pubClient = createClient({ host: "localhost", port: 6379 });
 const subClient = pubClient.duplicate();

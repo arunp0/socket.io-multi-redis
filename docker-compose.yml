@@ -8,3 +8,6 @@ services:
     image: grokzen/redis-cluster:7.0.10
     ports:
       - "7000-7005:7000-7005"
+    environment:
+      BIND_ADDRESS: '0.0.0.0'
+      IP: '0.0.0.0'

@@ -47,7 +47,7 @@ function testSuite(
   specificsTestSuite(createAdapter, redisPackage, sharded);
 }
 
-describe("@socket.io/redis-adapter", () => {
+describe("socket.io-multi-redis", () => {
   describe("redis@4 standalone", () =>
     testSuite(async () => {
       const pubClient = createClient();
